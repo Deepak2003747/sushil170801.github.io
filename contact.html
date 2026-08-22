@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact Us — ONESTAR MILK ANALYZERS</title>
+<meta name="description" content="Get in touch about ONESTAR MILK ANALYZERS for your dairy society.">
+<link rel="icon" href="/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="bar">
+    <a class="brand" href="/">
+      <img src="/logo.png" alt="Onestar logo">
+      <span>ONESTAR MILK ANALYZERS</span>
+    </a>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/about.html">About Us</a>
+      <a href="/contact.html" class="active">Contact Us</a>
+    </nav>
+  </div>
+</header>
+
+<section class="page-hero ruled">
+  <div class="wrap">
+    <p class="eyebrow">Get in touch</p>
+    <h1>Set up ONESTAR for your society</h1>
+    <p class="lede" style="max-width:56ch;">
+      Tell us a bit about your dairy society and collection setup, and we'll get back to you.
+    </p>
+  </div>
+</section>
+
+<section style="padding-top:0;">
+  <div class="wrap contact-grid">
+
+    <div class="form-card">
+      <form id="contactForm">
+        <div class="field">
+          <label for="name">Your name</label>
+          <input type="text" id="name" required>
+        </div>
+        <div class="field">
+          <label for="society">Dairy society / business name</label>
+          <input type="text" id="society">
+        </div>
+        <div class="field">
+          <label for="phone">Phone number</label>
+          <input type="tel" id="phone">
+        </div>
+        <div class="field">
+          <label for="message">Message</label>
+          <textarea id="message" required placeholder="Tell us about your collection center — number of customers, current setup, etc."></textarea>
+        </div>
+        <button type="submit" class="btn" style="width:100%; justify-content:center;">Send message</button>
+        <p style="font-size:.78rem; color:var(--muted); margin:10px 0 0;">
+          This opens your email app with the message pre-filled to Sushil170801@gmail.com — nothing is sent from this page directly.
+        </p>
+      </form>
+    </div>
+
+    <div class="contact-info">
+      <div class="row">
+        <div class="ico">✉</div>
+        <div>
+          <h3>Email</h3>
+          <p><a href="mailto:Sushil170801@gmail.com">Sushil170801@gmail.com</a></p>
+        </div>
+      </div>
+      <div class="row">
+        <div class="ico">🏢</div>
+        <div>
+          <h3>Company</h3>
+          <p>Onestar Private Limited</p>
+        </div>
+      </div>
+      <div class="row">
+        <div class="ico">🕐</div>
+        <div>
+          <h3>Response time</h3>
+          <p>We typically reply within a business day.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<footer class="site">
+  <div class="wrap">
+    <p>© 2026 Onestar Private Limited. Contact: Sushil170801@gmail.com</p>
+    <div class="flinks">
+      <a href="/about.html">About</a>
+      <a href="/contact.html">Contact</a>
+      <a href="/privacy-policy.html">Privacy Policy</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+document.getElementById('contactForm').addEventListener('submit', function(e){
+  e.preventDefault();
+  var name = document.getElementById('name').value.trim();
+  var society = document.getElementById('society').value.trim();
+  var phone = document.getElementById('phone').value.trim();
+  var message = document.getElementById('message').value.trim();
+
+  var subject = 'Onestar Milk Analyzers — enquiry from ' + (name || 'website visitor');
+  var body =
+    'Name: ' + name + '\n' +
+    'Society/Business: ' + (society || '-') + '\n' +
+    'Phone: ' + (phone || '-') + '\n\n' +
+    'Message:\n' + message;
+
+  window.location.href = 'mailto:Sushil170801@gmail.com'
+    + '?subject=' + encodeURIComponent(subject)
+    + '&body=' + encodeURIComponent(body);
+});
+</script>
+
+</body>
+</html>
