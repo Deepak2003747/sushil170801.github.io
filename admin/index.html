@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Onestar — License Admin</title>
+<style>
+  :root{
+    --teal:#14A89E; --teal-dark:#0E7A73; --teal-light:#E3F6F4;
+    --bg:#F3FBFA; --ink:#12312E; --muted:#5B7C78; --border:#B9E4E0;
+    --red:#E53935; --green:#2E9E4E; --amber:#B8860B;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    background:var(--bg); color:var(--ink);
+  }
+  header{
+    background:var(--teal); color:#fff; padding:16px 20px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  header h1{ font-size:17px; margin:0; font-weight:700; }
+  header button{
+    background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.4);
+    color:#fff; padding:6px 12px; border-radius:6px; font-size:13px; cursor:pointer;
+  }
+  main{ max-width:960px; margin:0 auto; padding:20px; }
+
+  /* ---------- gate 1 (site password, checked before anything else loads) ---------- */
+  #gate1Screen{
+    max-width:360px; margin:100px auto; padding:28px; background:#fff;
+    border:1px solid var(--border); border-radius:12px; text-align:center;
+  }
+  #gate1Screen h2{ color:var(--teal-dark); margin-top:0; font-size:18px; }
+  #gate1Screen p.hint{ font-size:12px; color:var(--muted); margin-top:14px; }
+  #gate1Screen input{
+    width:100%; padding:11px; border:1px solid var(--border); border-radius:8px;
+    font-size:15px; margin:10px 0;
+  }
+
+  /* ---------- login gate (layer 2 — real license-DB password) ---------- */
+  #loginScreen{
+    max-width:360px; margin:80px auto; padding:28px; background:#fff;
+    border:1px solid var(--border); border-radius:12px; text-align:center;
+  }
+  #loginScreen h2{ color:var(--teal-dark); margin-top:0; font-size:18px; }
+  #loginScreen input{
+    width:100%; padding:11px; border:1px solid var(--border); border-radius:8px;
+    font-size:15px; margin:10px 0;
+  }
+  #loginScreen p.setupNote{ font-size:12px; color:var(--muted); text-align:left; line-height:1.5; margin-top:16px; }
+
+  /* ---------- shared ---------- */
+  .card{
+    background:#fff; border:1px solid var(--border); border-radius:10px;
+    padding:18px; margin-bottom:18px;
+  }
+  .card h2{ font-size:15px; color:var(--teal-dark); margin:0 0 12px; }
+  button{
+    background:var(--teal); color:#fff; border:none; padding:10px 16px;
+    border-radius:7px; font-size:14px; cursor:pointer; font-weight:600;
+  }
+  button:hover{ background:var(--teal-dark); }
+  button.secondary{ background:#fff; color:var(--teal-dark); border:1px solid var(--teal); }
+  button.danger{ background:#fff; color:var(--red); border:1px solid var(--red); }
+  button.danger:hover{ background:#fdecea; }
+  button:disabled{ opacity:.5; cursor:default; }
+  select, input[type=text]{
+    padding:9px 10px; border:1px solid var(--border); border-radius:7px; font-size:14px;
+  }
+  .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .msg{ font-size:13px; margin-top:10px; padding:8px 10px; border-radius:6px; display:none; }
+  .msg.ok{ background:#e8f7ee; color:var(--green); display:block; }
+  .msg.err{ background:#fdecea; color:var(--red); display:block; }
+
+  table{ width:100%; border-collapse:collapse; font-size:13.5px; margin-top:10px;}
+  th,td{ text-align:left; padding:9px 8px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  th{ color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.03em; }
+  td.serial{ font-family:monospace; font-weight:700; }
+  .badge{ padding:2px 8px; border-radius:20px; font-size:11px; font-weight:700; }
+  .badge.y{ background:#e8f7ee; color:var(--green); }
+  .badge.n{ background:#f2f2f2; color:var(--muted); }
+  .badge.m{ background:var(--teal-light); color:var(--teal-dark); }
+  .badge.a{ background:#fff4e5; color:var(--amber); }
+  .rowActions{ display:flex; gap:6px; }
+  .rowActions button{ padding:5px 9px; font-size:12px; }
+  #searchResultBox{ margin-top:10px; }
+  .empty{ color:var(--muted); font-size:13px; padding:14px 0; text-align:center; }
+  .toolbar{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:10px;}
+  .toolbar input{ min-width:220px; }
+
+  /* confirm modal */
+  #confirmOverlay{
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.4);
+    align-items:center; justify-content:center; z-index:50;
+  }
+  #confirmBox{
+    background:#fff; border-radius:12px; padding:22px; max-width:340px; width:90%;
+  }
+  #confirmBox h3{ margin:0 0 8px; font-size:15px; }
+  #confirmBox p{ font-size:13px; color:var(--muted); margin:0 0 14px; line-height:1.5;}
+  #confirmBox input{ width:100%; margin-bottom:12px; }
+  #confirmBox .row{ justify-content:flex-end; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ GATE 1 — first password, checked entirely in this browser ═══════════════ -->
+<div id="gate1Screen">
+  <h2>Onestar Admin — Step 1 of 2</h2>
+  <input type="password" id="gate1Pw" placeholder="Site password" autofocus>
+  <button style="width:100%" onclick="checkGate1()">Continue</button>
+  <div class="msg err" id="gate1Msg"></div>
+  <p class="hint">This is the first of two passwords. A second, separate password (checked by the server) unlocks the actual license database.</p>
+</div>
+
+<!-- ═══════════════ LOGIN GATE — layer 2, the real license-DB password ═══════════════ -->
+<div id="loginScreen" style="display:none;">
+  <h2>Onestar License Admin — Step 2 of 2</h2>
+  <input type="password" id="loginPw" placeholder="Admin password" autofocus>
+  <button style="width:100%" onclick="doLogin()">Enter</button>
+  <div class="msg err" id="loginMsg"></div>
+  <p class="setupNote">
+    <b>First time here?</b> Open <code>index.html</code> in a text editor and set
+    <code>SERVER_URL</code> near the top to your deployed Apps Script <code>/exec</code> URL.
+    The password checked here is the <code>ADMIN_KEY</code> you set in that script.
+  </p>
+</div>
+
+<!-- ═══════════════ MAIN PANEL (hidden until both gates pass) ═══════════════ -->
+<div id="panel" style="display:none;">
+  <header>
+    <h1>Onestar — License Admin</h1>
+    <button onclick="logout()">Log out</button>
+  </header>
+  <main>
+
+    <div class="card">
+      <h2>Create new license</h2>
+      <div class="row">
+        <select id="newType">
+          <option value="M">M — Machine + App</option>
+          <option value="A">A — App only</option>
+        </select>
+        <button onclick="createLicense()">Generate serial</button>
+      </div>
+      <div class="msg" id="createMsg"></div>
+    </div>
+
+    <div class="card">
+      <h2>Find a serial</h2>
+      <div class="row">
+        <input type="text" id="searchInput" placeholder="e.g. ONS20270001" style="flex:1; min-width:200px;">
+        <button class="secondary" onclick="searchSerial()">Search</button>
+      </div>
+      <div id="searchResultBox"></div>
+    </div>
+
+    <div class="card">
+      <div class="toolbar">
+        <h2 style="margin:0;">All licenses</h2>
+        <input type="text" id="filterInput" placeholder="Filter table..." oninput="renderTable()">
+      </div>
+      <div id="tableBox"><div class="empty">Loading…</div></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ═══════════════ CONFIRM MODAL (used for delete + transfer) ═══════════════ -->
+<div id="confirmOverlay">
+  <div id="confirmBox">
+    <h3 id="confirmTitle"></h3>
+    <p id="confirmBody"></p>
+    <input type="password" id="confirmPw" placeholder="Re-enter admin password" style="display:none;">
+    <div class="row">
+      <button class="secondary" onclick="closeConfirm()">Cancel</button>
+      <button id="confirmActionBtn" class="danger">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// GATE 1 — a static site password, checked entirely in the browser via a
+// SHA-256 hash comparison. This is a soft deterrent (a determined person
+// viewing the page source could brute-force the hash offline) — it is NOT
+// a substitute for the server-verified ADMIN_KEY below, which is the real
+// protection for the license data itself.
+//
+// To change this password: open a browser console (F12) on ANY page and run:
+//   crypto.subtle.digest('SHA-256', new TextEncoder().encode('yourNewPassword'))
+//     .then(b => console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')))
+// then paste the printed hash below as GATE1_HASH.
+// ═══════════════════════════════════════════════════════════════════════
+const GATE1_HASH = "a51bb1dc7fc689716e41533501891b98fbd732b34e6f77189957f16c82cd7fda";
+
+async function sha256Hex(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function checkGate1() {
+  const pw = document.getElementById("gate1Pw").value;
+  const msgEl = document.getElementById("gate1Msg");
+  const hash = await sha256Hex(pw);
+  if (hash === GATE1_HASH) {
+    sessionStorage.setItem("onestar_gate1_ok", "1");
+    document.getElementById("gate1Screen").style.display = "none";
+    document.getElementById("loginScreen").style.display = "block";
+    msgEl.style.display = "none";
+    // try silent login for layer 2 as well
+    trySilentLogin();
+  } else {
+    msgEl.textContent = "Wrong password.";
+    msgEl.className = "msg err";
+    msgEl.style.display = "block";
+  }
+}
+document.getElementById("gate1Pw").addEventListener("keydown", e => {
+  if (e.key === "Enter") checkGate1();
+});
+
+window.addEventListener("load", () => {
+  if (sessionStorage.getItem("onestar_gate1_ok") === "1") {
+    document.getElementById("gate1Screen").style.display = "none";
+    document.getElementById("loginScreen").style.display = "block";
+    trySilentLogin();
+  }
+});
+
+// ⚠️ Set this to YOUR deployed Apps Script Web App URL (ends in /exec)
+const SERVER_URL = "https://script.google.com/macros/s/REPLACE_WITH_YOUR_DEPLOYMENT_ID/exec";
+
+let adminKey = "";
+let allRows = [];
+
+async function callServer(action, extra) {
+  const body = Object.assign({ action, adminKey }, extra || {});
+  const res = await fetch(SERVER_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" }, // avoids CORS preflight on Apps Script
+    body: JSON.stringify(body)
+  });
+  return res.json();
+}
+
+function showMsg(el, text, ok) {
+  el.textContent = text;
+  el.className = "msg " + (ok ? "ok" : "err");
+  el.style.display = "block";
+  if (ok) setTimeout(() => { el.style.display = "none"; }, 4000);
+}
+
+// ---------- login (layer 2) ----------
+async function doLogin() {
+  const pw = document.getElementById("loginPw").value.trim();
+  const msgEl = document.getElementById("loginMsg");
+  if (!pw) return;
+  msgEl.style.display = "none";
+  try {
+    const r = await fetch(SERVER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "admin_login", adminKey: pw })
+    }).then(r => r.json());
+    if (r.status === "ok") {
+      adminKey = pw;
+      sessionStorage.setItem("onestar_admin_key", pw);
+      document.getElementById("loginScreen").style.display = "none";
+      document.getElementById("panel").style.display = "block";
+      loadList();
+    } else {
+      showMsg(msgEl, r.message || "Wrong password.", false);
+    }
+  } catch (e) {
+    showMsg(msgEl, "Could not reach server. Check SERVER_URL in the file.", false);
+  }
+}
+
+function logout() {
+  sessionStorage.removeItem("onestar_admin_key");
+  sessionStorage.removeItem("onestar_gate1_ok");
+  location.reload();
+}
+
+function trySilentLogin() {
+  const saved = sessionStorage.getItem("onestar_admin_key");
+  if (saved) {
+    document.getElementById("loginPw").value = saved;
+    doLogin();
+  }
+}
+document.getElementById("loginPw").addEventListener("keydown", e => {
+  if (e.key === "Enter") doLogin();
+});
+
+// ---------- create ----------
+async function createLicense() {
+  const type = document.getElementById("newType").value;
+  const msgEl = document.getElementById("createMsg");
+  const r = await callServer("admin_add", { type });
+  if (r.status === "ok") {
+    showMsg(msgEl, "Created " + r.serial + " (Type " + type + ")", true);
+    loadList();
+  } else {
+    showMsg(msgEl, r.message, false);
+  }
+}
+
+// ---------- search ----------
+async function searchSerial() {
+  const serial = document.getElementById("searchInput").value.trim();
+  const box = document.getElementById("searchResultBox");
+  if (!serial) { box.innerHTML = ""; return; }
+  const r = await callServer("admin_search", { serial });
+  if (r.status !== "ok") {
+    box.innerHTML = `<div class="msg err" style="display:block;">${r.message}</div>`;
+    return;
+  }
+  box.innerHTML = renderRowCard(r.row);
+}
+
+function renderRowCard(row) {
+  return `
+    <table><tbody>
+      <tr><th>Serial</th><td class="serial">${row.serial}</td></tr>
+      <tr><th>Activated</th><td>${badge(row.activated)}</td></tr>
+      <tr><th>Device Id</th><td>${row.deviceId || '<span class="empty">—</span>'}</td></tr>
+      <tr><th>Type</th><td>${badge(row.type)}</td></tr>
+      <tr><th>Activation Date</th><td>${row.activationDate || '—'}</td></tr>
+    </tbody></table>
+    <div class="row" style="margin-top:10px;">
+      ${row.activated === 'Y' ? `<button class="secondary" onclick="confirmTransfer('${row.serial}')">Approve device transfer</button>` : ''}
+      <button class="danger" onclick="confirmDelete('${row.serial}')">Delete</button>
+    </div>`;
+}
+
+function badge(val) {
+  const v = (val || "").toUpperCase();
+  const cls = v === "Y" ? "y" : v === "N" ? "n" : v === "M" ? "m" : v === "A" ? "a" : "n";
+  const label = v === "Y" ? "Yes" : v === "N" ? "No" : v === "M" ? "Machine" : v === "A" ? "App only" : v || "—";
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+// ---------- table ----------
+async function loadList() {
+  const box = document.getElementById("tableBox");
+  const r = await callServer("admin_list", {});
+  if (r.status !== "ok") {
+    box.innerHTML = `<div class="msg err" style="display:block;">${r.message}</div>`;
+    return;
+  }
+  allRows = r.rows;
+  renderTable();
+}
+
+function renderTable() {
+  const box = document.getElementById("tableBox");
+  const filter = document.getElementById("filterInput").value.trim().toLowerCase();
+  const rows = allRows.filter(row =>
+    !filter ||
+    row.serial.toLowerCase().includes(filter) ||
+    row.deviceId.toLowerCase().includes(filter)
+  );
+
+  if (rows.length === 0) {
+    box.innerHTML = `<div class="empty">No licenses yet — create one above.</div>`;
+    return;
+  }
+
+  const trs = rows.map(row => `
+    <tr>
+      <td class="serial">${row.serial}</td>
+      <td>${badge(row.activated)}</td>
+      <td>${row.deviceId ? row.deviceId.slice(0, 16) + (row.deviceId.length > 16 ? '…' : '') : '—'}</td>
+      <td>${badge(row.type)}</td>
+      <td>${row.activationDate || '—'}</td>
+      <td class="rowActions">
+        ${row.activated === 'Y' ? `<button class="secondary" onclick="confirmTransfer('${row.serial}')">Transfer</button>` : ''}
+        <button class="danger" onclick="confirmDelete('${row.serial}')">Delete</button>
+      </td>
+    </tr>`).join("");
+
+  box.innerHTML = `
+    <table>
+      <thead><tr>
+        <th>Serial</th><th>Activated</th><th>Device Id</th><th>Type</th><th>Activation Date</th><th></th>
+      </tr></thead>
+      <tbody>${trs}</tbody>
+    </table>`;
+}
+
+// ---------- confirm modal (delete / transfer) ----------
+let pendingAction = null;
+
+function confirmDelete(serial) {
+  pendingAction = { type: "delete", serial };
+  document.getElementById("confirmTitle").textContent = "Delete " + serial + "?";
+  document.getElementById("confirmBody").textContent =
+    "This permanently removes the license. This cannot be undone.";
+  document.getElementById("confirmPw").style.display = "block";
+  document.getElementById("confirmPw").value = "";
+  document.getElementById("confirmActionBtn").textContent = "Delete";
+  document.getElementById("confirmOverlay").style.display = "flex";
+}
+
+function confirmTransfer(serial) {
+  pendingAction = { type: "transfer", serial };
+  document.getElementById("confirmTitle").textContent = "Approve transfer for " + serial + "?";
+  document.getElementById("confirmBody").textContent =
+    "Clears the current device binding. The customer can then activate on their new phone " +
+    "by entering just the serial number.";
+  document.getElementById("confirmPw").style.display = "none";
+  document.getElementById("confirmActionBtn").textContent = "Approve transfer";
+  document.getElementById("confirmOverlay").style.display = "flex";
+}
+
+function closeConfirm() {
+  document.getElementById("confirmOverlay").style.display = "none";
+  pendingAction = null;
+}
+
+document.getElementById("confirmActionBtn").addEventListener("click", async () => {
+  if (!pendingAction) return;
+  const { type, serial } = pendingAction;
+
+  if (type === "delete") {
+    const pw = document.getElementById("confirmPw").value.trim();
+    if (pw !== adminKey) {
+      alert("Password does not match. Delete cancelled.");
+      return;
+    }
+    const r = await callServer("admin_delete", { serial });
+    closeConfirm();
+    if (r.status === "ok") loadList();
+    else alert(r.message);
+  } else if (type === "transfer") {
+    const r = await callServer("admin_approve_transfer", { serial });
+    closeConfirm();
+    if (r.status === "ok") { loadList(); document.getElementById("searchResultBox").innerHTML = ""; }
+    else alert(r.message);
+  }
+});
+</script>
+</body>
+</html>
