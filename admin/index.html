@@ -309,6 +309,16 @@ async function createLicense() {
   }
 }
 
+// ---------- modify (routes a table row through the same deliberate
+// search/detail flow as typing a serial in manually — Transfer/Delete
+// only ever appear on that detail card, never as one-tap buttons in the
+// busy table, so a stray tap in the list can't accidentally hit either) ----------
+function modifySerial(serial) {
+  document.getElementById("searchInput").value = serial;
+  searchSerial();
+  document.getElementById("searchInput").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
 // ---------- search ----------
 async function searchSerial() {
   const serial = document.getElementById("searchInput").value.trim();
@@ -378,8 +388,7 @@ function renderTable() {
       <td>${badge(row.type)}</td>
       <td>${row.activationDate || '—'}</td>
       <td class="rowActions">
-        ${row.activated === 'Y' ? `<button class="secondary" onclick="confirmTransfer('${row.serial}')">Transfer</button>` : ''}
-        <button class="danger" onclick="confirmDelete('${row.serial}')">Delete</button>
+        <button class="secondary" onclick="modifySerial('${row.serial}')">Modify</button>
       </td>
     </tr>`).join("");
 
