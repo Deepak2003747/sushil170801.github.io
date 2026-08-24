@@ -101,6 +101,9 @@
   .empty{ color:var(--muted); font-size:13px; padding:14px 0; text-align:center; }
   .toolbar{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:10px;}
   .toolbar input{ min-width:220px; }
+  /* Lets the table scroll sideways within its own card instead of ever
+     pushing content (like the Modify button) off the edge of the page. */
+  .tableScroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
 
   /* confirm modal */
   #confirmOverlay{
@@ -174,7 +177,7 @@
         <h2 style="margin:0;">All licenses</h2>
         <input type="text" id="filterInput" placeholder="Filter table..." oninput="renderTable()">
       </div>
-      <div id="tableBox"><div class="empty">Loading…</div></div>
+      <div id="tableBox" class="tableScroll"><div class="empty">Loading…</div></div>
     </div>
 
   </main>
@@ -245,7 +248,7 @@ window.addEventListener("load", () => {
 });
 
 // ⚠️ Set this to YOUR deployed Apps Script Web App URL (ends in /exec)
-const SERVER_URL = "https://script.google.com/macros/s/AKfycbzJWYRZVCoVbmNSYHlirg8ex2izMmqJftE-_-EVOh75ZfhzXtzsWjfSLIYF1sxy1Cbh2w/exec"
+const SERVER_URL = "https://script.google.com/macros/s/AKfycbzJWYRZVCoVbmNSYHlirg8ex2izMmqJftE-_-EVOh75ZfhzXtzsWjfSLIYF1sxy1Cbh2w/exec";
 
 let adminKey = "";
 let allRows = [];
