@@ -66,6 +66,18 @@
   button.danger{ background:#fff; color:var(--red); border:1px solid var(--red); }
   button.danger:hover{ background:#fdecea; }
   button:disabled{ opacity:.5; cursor:default; }
+
+  /* ---------- loading spinner (shown inside a button while a request is in flight) ---------- */
+  .spinner{
+    display:inline-block; width:14px; height:14px; margin-right:7px;
+    border:2px solid rgba(255,255,255,.5); border-top-color:#fff;
+    border-radius:50%; vertical-align:-2px;
+    animation:spin .7s linear infinite;
+  }
+  button.secondary .spinner, button.danger .spinner{
+    border:2px solid rgba(14,122,115,.35); border-top-color:var(--teal-dark);
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
   select, input[type=text]{
     padding:9px 10px; border:1px solid var(--border); border-radius:7px; font-size:14px;
   }
@@ -110,7 +122,7 @@
 <div id="gate1Screen">
   <h2>Onestar Admin — Step 1 of 2</h2>
   <input type="password" id="gate1Pw" placeholder="Site password" autofocus>
-  <button style="width:100%" onclick="checkGate1()">Continue</button>
+  <button style="width:100%" onclick="checkGate1(this)">Continue</button>
   <div class="msg err" id="gate1Msg"></div>
   <p class="hint">This is the first of two passwords. A second, separate password (checked by the server) unlocks the actual license database.</p>
 </div>
@@ -119,7 +131,7 @@
 <div id="loginScreen" style="display:none;">
   <h2>Onestar License Admin — Step 2 of 2</h2>
   <input type="password" id="loginPw" placeholder="Admin password" autofocus>
-  <button style="width:100%" onclick="doLogin()">Enter</button>
+  <button style="width:100%" onclick="doLogin(this)">Enter</button>
   <div class="msg err" id="loginMsg"></div>
   <p class="setupNote">
     <b>First time here?</b> Open <code>index.html</code> in a text editor and set
@@ -143,7 +155,7 @@
           <option value="M">M — Machine + App</option>
           <option value="A">A — App only</option>
         </select>
-        <button onclick="createLicense()">Generate serial</button>
+        <button onclick="createLicense(this)">Generate serial</button>
       </div>
       <div class="msg" id="createMsg"></div>
     </div>
@@ -152,7 +164,7 @@
       <h2>Find a serial</h2>
       <div class="row">
         <input type="text" id="searchInput" placeholder="e.g. ONS20270001" style="flex:1; min-width:200px;">
-        <button class="secondary" onclick="searchSerial()">Search</button>
+        <button class="secondary" onclick="searchSerial(this)">Search</button>
       </div>
       <div id="searchResultBox"></div>
     </div>
@@ -201,10 +213,12 @@ async function sha256Hex(text) {
   return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function checkGate1() {
+async function checkGate1(btn) {
   const pw = document.getElementById("gate1Pw").value;
   const msgEl = document.getElementById("gate1Msg");
+  setBtnLoading(btn, true, "Checking…");
   const hash = await sha256Hex(pw);
+  setBtnLoading(btn, false);
   if (hash === GATE1_HASH) {
     sessionStorage.setItem("onestar_gate1_ok", "1");
     document.getElementById("gate1Screen").style.display = "none";
@@ -219,7 +233,7 @@ async function checkGate1() {
   }
 }
 document.getElementById("gate1Pw").addEventListener("keydown", e => {
-  if (e.key === "Enter") checkGate1();
+  if (e.key === "Enter") checkGate1(document.querySelector('#gate1Screen button'));
 });
 
 window.addEventListener("load", () => {
@@ -253,12 +267,27 @@ function showMsg(el, text, ok) {
   if (ok) setTimeout(() => { el.style.display = "none"; }, 4000);
 }
 
+// ---------- loading state helper — every button click shows real feedback
+// (spinner + disabled) the instant it's tapped, so it never feels like the
+// tap didn't register while waiting on the network ----------
+function setBtnLoading(btn, loading, loadingText) {
+  if (loading) {
+    btn.dataset.originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>' + (loadingText || "Working…");
+  } else {
+    btn.disabled = false;
+    if (btn.dataset.originalText) btn.innerHTML = btn.dataset.originalText;
+  }
+}
+
 // ---------- login (layer 2) ----------
-async function doLogin() {
+async function doLogin(btn) {
   const pw = document.getElementById("loginPw").value.trim();
   const msgEl = document.getElementById("loginMsg");
   if (!pw) return;
   msgEl.style.display = "none";
+  if (btn) setBtnLoading(btn, true, "Checking…");
   try {
     const r = await fetch(SERVER_URL, {
       method: "POST",
@@ -276,6 +305,8 @@ async function doLogin() {
     }
   } catch (e) {
     showMsg(msgEl, "Could not reach server. Check SERVER_URL in the file.", false);
+  } finally {
+    if (btn) setBtnLoading(btn, false);
   }
 }
 
@@ -293,19 +324,24 @@ function trySilentLogin() {
   }
 }
 document.getElementById("loginPw").addEventListener("keydown", e => {
-  if (e.key === "Enter") doLogin();
+  if (e.key === "Enter") doLogin(document.querySelector('#loginScreen button'));
 });
 
 // ---------- create ----------
-async function createLicense() {
+async function createLicense(btn) {
   const type = document.getElementById("newType").value;
   const msgEl = document.getElementById("createMsg");
-  const r = await callServer("admin_add", { type });
-  if (r.status === "ok") {
-    showMsg(msgEl, "Created " + r.serial + " (Type " + type + ")", true);
-    loadList();
-  } else {
-    showMsg(msgEl, r.message, false);
+  setBtnLoading(btn, true, "Generating…");
+  try {
+    const r = await callServer("admin_add", { type });
+    if (r.status === "ok") {
+      showMsg(msgEl, "Created " + r.serial + " (Type " + type + ")", true);
+      loadList();
+    } else {
+      showMsg(msgEl, r.message, false);
+    }
+  } finally {
+    setBtnLoading(btn, false);
   }
 }
 
@@ -320,19 +356,25 @@ function modifySerial(serial) {
 }
 
 // ---------- search ----------
-async function searchSerial() {
+async function searchSerial(btn) {
   const serial = document.getElementById("searchInput").value.trim();
   const box = document.getElementById("searchResultBox");
   if (!serial) { box.innerHTML = ""; return; }
-  const r = await callServer("admin_search", { serial });
-  if (r.status !== "ok") {
-    box.innerHTML = `<div class="msg err" style="display:block;">${r.message}</div>`;
-    return;
+  if (btn) setBtnLoading(btn, true, "Searching…");
+  try {
+    const r = await callServer("admin_search", { serial });
+    if (r.status !== "ok") {
+      box.innerHTML = `<div class="msg err" style="display:block;">${r.message}</div>`;
+      return;
+    }
+    box.innerHTML = renderRowCard(r.row);
+  } finally {
+    if (btn) setBtnLoading(btn, false);
   }
-  box.innerHTML = renderRowCard(r.row);
 }
 
 function renderRowCard(row) {
+  const isSuspended = (row.suspended || "").toUpperCase() === "Y";
   return `
     <table><tbody>
       <tr><th>Serial</th><td class="serial">${row.serial}</td></tr>
@@ -340,11 +382,42 @@ function renderRowCard(row) {
       <tr><th>Device Id</th><td>${row.deviceId || '<span class="empty">—</span>'}</td></tr>
       <tr><th>Type</th><td>${badge(row.type)}</td></tr>
       <tr><th>Activation Date</th><td>${row.activationDate || '—'}</td></tr>
+      ${row.activated === 'Y' ? `<tr><th>Service</th><td>${isSuspended ? '<span class="badge n">Stopped</span>' : '<span class="badge y">Running</span>'}</td></tr>` : ''}
     </tbody></table>
     <div class="row" style="margin-top:10px;">
+      ${row.activated === 'Y' ? (
+        isSuspended
+          ? `<button class="secondary" onclick="resumeSerial('${row.serial}', this)">Start Service</button>`
+          : `<button class="secondary" onclick="suspendSerial('${row.serial}', this)">Stop Service</button>`
+      ) : ''}
       ${row.activated === 'Y' ? `<button class="secondary" onclick="confirmTransfer('${row.serial}')">Approve device transfer</button>` : ''}
       <button class="danger" onclick="confirmDelete('${row.serial}')">Delete</button>
     </div>`;
+}
+
+// ---------- stop / start service (pauses or resumes ONE device's access;
+// never touches Device_Id, Activated, or any data stored on the phone —
+// purely a remote on/off switch, fully reversible) ----------
+async function suspendSerial(serial, btn) {
+  setBtnLoading(btn, true, "Stopping…");
+  try {
+    const r = await callServer("admin_suspend", { serial });
+    if (r.status === "ok") { searchSerial(); loadList(); }
+    else alert(r.message);
+  } finally {
+    setBtnLoading(btn, false);
+  }
+}
+
+async function resumeSerial(serial, btn) {
+  setBtnLoading(btn, true, "Starting…");
+  try {
+    const r = await callServer("admin_resume", { serial });
+    if (r.status === "ok") { searchSerial(); loadList(); }
+    else alert(r.message);
+  } finally {
+    setBtnLoading(btn, false);
+  }
 }
 
 function badge(val) {
@@ -385,6 +458,7 @@ function renderTable() {
       <td class="serial">${row.serial}</td>
       <td>${badge(row.activated)}</td>
       <td>${row.deviceId ? row.deviceId.slice(0, 16) + (row.deviceId.length > 16 ? '…' : '') : '—'}</td>
+      <td>${row.activated === 'Y' ? ((row.suspended || '').toUpperCase() === 'Y' ? '<span class="badge n">Stopped</span>' : '<span class="badge y">Running</span>') : '—'}</td>
       <td>${badge(row.type)}</td>
       <td>${row.activationDate || '—'}</td>
       <td class="rowActions">
@@ -395,7 +469,7 @@ function renderTable() {
   box.innerHTML = `
     <table>
       <thead><tr>
-        <th>Serial</th><th>Activated</th><th>Device Id</th><th>Type</th><th>Activation Date</th><th></th>
+        <th>Serial</th><th>Activated</th><th>Device Id</th><th>Service</th><th>Type</th><th>Activation Date</th><th></th>
       </tr></thead>
       <tbody>${trs}</tbody>
     </table>`;
@@ -434,6 +508,7 @@ function closeConfirm() {
 document.getElementById("confirmActionBtn").addEventListener("click", async () => {
   if (!pendingAction) return;
   const { type, serial } = pendingAction;
+  const btn = document.getElementById("confirmActionBtn");
 
   if (type === "delete") {
     const pw = document.getElementById("confirmPw").value.trim();
@@ -441,12 +516,16 @@ document.getElementById("confirmActionBtn").addEventListener("click", async () =
       alert("Password does not match. Delete cancelled.");
       return;
     }
+    setBtnLoading(btn, true, "Deleting…");
     const r = await callServer("admin_delete", { serial });
+    setBtnLoading(btn, false);
     closeConfirm();
     if (r.status === "ok") loadList();
     else alert(r.message);
   } else if (type === "transfer") {
+    setBtnLoading(btn, true, "Approving…");
     const r = await callServer("admin_approve_transfer", { serial });
+    setBtnLoading(btn, false);
     closeConfirm();
     if (r.status === "ok") { loadList(); document.getElementById("searchResultBox").innerHTML = ""; }
     else alert(r.message);
