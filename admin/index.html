@@ -137,9 +137,9 @@
   <button style="width:100%" onclick="doLogin(this)">Enter</button>
   <div class="msg err" id="loginMsg"></div>
   <p class="setupNote">
-    <b>First time here?</b> Open <code>index.html</code> in a text editor and set
-    <code>SERVER_URL</code> near the top to your deployed Apps Script <code>/exec</code> URL.
-    The password checked here is the <code>ADMIN_KEY</code> you set in that script.
+    <b>Forgot your password?</b> It's stored in your Apps Script project's
+    Script Properties as <code>ADMIN_KEY</code> — open the script, go to
+    Project Settings, and check or update it there.
   </p>
 </div>
 
@@ -223,12 +223,9 @@ async function checkGate1(btn) {
   const hash = await sha256Hex(pw);
   setBtnLoading(btn, false);
   if (hash === GATE1_HASH) {
-    sessionStorage.setItem("onestar_gate1_ok", "1");
     document.getElementById("gate1Screen").style.display = "none";
     document.getElementById("loginScreen").style.display = "block";
     msgEl.style.display = "none";
-    // try silent login for layer 2 as well
-    trySilentLogin();
   } else {
     msgEl.textContent = "Wrong password.";
     msgEl.className = "msg err";
@@ -239,13 +236,9 @@ document.getElementById("gate1Pw").addEventListener("keydown", e => {
   if (e.key === "Enter") checkGate1(document.querySelector('#gate1Screen button'));
 });
 
-window.addEventListener("load", () => {
-  if (sessionStorage.getItem("onestar_gate1_ok") === "1") {
-    document.getElementById("gate1Screen").style.display = "none";
-    document.getElementById("loginScreen").style.display = "block";
-    trySilentLogin();
-  }
-});
+// NOTE: no persistence check on page load anymore — every fresh load,
+// refresh, or reopened tab starts back at Gate 1. Nothing is remembered
+// between visits, by design.
 
 // ⚠️ Set this to YOUR deployed Apps Script Web App URL (ends in /exec)
 const SERVER_URL = "https://script.google.com/macros/s/AKfycbzJWYRZVCoVbmNSYHlirg8ex2izMmqJftE-_-EVOh75ZfhzXtzsWjfSLIYF1sxy1Cbh2w/exec";
@@ -299,7 +292,6 @@ async function doLogin(btn) {
     }).then(r => r.json());
     if (r.status === "ok") {
       adminKey = pw;
-      sessionStorage.setItem("onestar_admin_key", pw);
       document.getElementById("loginScreen").style.display = "none";
       document.getElementById("panel").style.display = "block";
       loadList();
@@ -314,18 +306,12 @@ async function doLogin(btn) {
 }
 
 function logout() {
-  sessionStorage.removeItem("onestar_admin_key");
-  sessionStorage.removeItem("onestar_gate1_ok");
+  // Nothing is persisted anymore, so logout is really just "reload the
+  // page" — but we clear the in-memory key too, defensively.
+  adminKey = "";
   location.reload();
 }
 
-function trySilentLogin() {
-  const saved = sessionStorage.getItem("onestar_admin_key");
-  if (saved) {
-    document.getElementById("loginPw").value = saved;
-    doLogin();
-  }
-}
 document.getElementById("loginPw").addEventListener("keydown", e => {
   if (e.key === "Enter") doLogin(document.querySelector('#loginScreen button'));
 });
