@@ -67,7 +67,6 @@ header.site{
   position:sticky; top:0; z-index:40;
   background:rgba(250,246,236,.92);
   backdrop-filter:blur(6px);
-  border-bottom:1px solid var(--border);
 }
 header.site .bar{
   display:flex; align-items:center; justify-content:space-between;
